@@ -1,7 +1,8 @@
 # Tangkap Bentuk
 
-Game menangkap bentuk yang jatuh dengan keranjang. Perintah diucapkan lewat suara
-("Tangkap bentuk lingkaran"), keranjang digerakkan dengan kamera, atau sementara dengan keyboard.
+Game menangkap bentuk yang jatuh dengan keranjang di tiga jalur (kiri, tengah, kanan).
+Perintah diucapkan lewat suara ("Tangkap bentuk lingkaran"). Keranjang mulai di tengah dan
+dipindah dengan kamera, atau sementara dengan keyboard.
 
 ## Struktur folder
 
@@ -34,10 +35,10 @@ Saran ukuran: PNG transparan 128x128 piksel, di bawah 15 KB per gambar.
 
 | Kontrol | Fungsi |
 |---|---|
-| A / panah kiri | Keranjang ke kiri |
-| D / panah kanan | Keranjang ke kanan |
-| Kamera | Geser badan ke kiri dan kanan |
-| Sentuh atau tahan klik mouse lalu geser | Keranjang mengikuti jari atau kursor |
+| A / panah kiri | Pindah satu jalur ke kiri |
+| D / panah kanan | Pindah satu jalur ke kanan |
+| Kamera | Geser badan sekali ke kiri atau ke kanan, kembali ke tengah untuk jalur tengah |
+| Ketuk atau klik jalur | Keranjang pindah ke jalur itu |
 | P atau Esc | Jeda |
 | C | Kalibrasi ulang kamera |
 | M | Suara hidup atau mati |
@@ -48,11 +49,12 @@ Saran ukuran: PNG transparan 128x128 piksel, di bawah 15 KB per gambar.
 
 Saat mulai, game meminta pemain keluar dari bingkai selama beberapa detik untuk merekam latar belakang.
 Setelah itu, bagian gambar yang berbeda dari latar dianggap pemain, dan posisi kiri-kanannya
-menggerakkan keranjang. Gambar kamera diperkecil menjadi 64x48 piksel dan hanya diproses di perangkat,
+menentukan jalur keranjang. Dua garis putih di pratinjau kamera menunjukkan batas antar jalur. Gambar kamera diperkecil menjadi 64x48 piksel dan hanya diproses di perangkat,
 tidak ada yang dikirim ke server.
 
 Tips: cahaya cukup, latar tidak ramai, dan hanya satu orang di depan kamera.
-Pengaturan sensitivitas ada di objek `CAM` pada bagian konfigurasi `index.html`.
+Pengaturan sensitivitas ada di objek `CAM` pada bagian konfigurasi `index.html`
+(`edgeL` dan `edgeR` mengatur seberapa jauh badan harus bergeser).
 
 ## Menjalankan
 
