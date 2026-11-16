@@ -108,6 +108,9 @@ body.calibrating #camHint{font-size:15px;padding:6px}
 .btn:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.3)}
 .btn:disabled{opacity:.45;cursor:default}
 .status{margin:0 0 10px;font-size:15px;font-weight:700;min-height:1.3em}
+.status:empty{display:none}
+.menu-actions{flex-direction:column;align-items:stretch;margin:22px auto 16px;max-width:300px}
+.menu-actions .btn{font-size:24px;padding:16px 22px}
 .tips{margin:0;padding:0;list-style:none;font-size:15px;line-height:1.55;text-align:left;
   background:#eef7fc;border-radius:16px;padding:12px 16px}
 .tips li+li{margin-top:2px}
@@ -117,6 +120,20 @@ body.calibrating #camHint{font-size:15px;padding:6px}
 #calibNum{font-size:clamp(56px,12vw,92px);font-weight:900;color:var(--coral);line-height:1;min-height:1em;margin-top:6px}
 .score-line{font-size:20px;margin:0 0 6px}
 .score-line b{font-size:30px}
+
+/* ---------- Tombol sentuh 1 (kiri) dan 2 (kanan) ---------- */
+.pad{
+  position:fixed;z-index:7;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);
+  width:clamp(76px,13vmin,128px);height:clamp(76px,13vmin,128px);border-radius:50%;
+  border:4px solid #fff;background:var(--ink);color:#fff;cursor:pointer;
+  font:inherit;font-weight:900;font-size:clamp(34px,6vmin,58px);line-height:1;
+  box-shadow:0 6px 0 #08172a;opacity:.88;touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.pad:active,.pad.down{transform:translateY(4px);box-shadow:0 2px 0 #08172a;opacity:1}
+#padL{left:calc(env(safe-area-inset-left,0px) + 18px)}
+#padR{right:calc(env(safe-area-inset-right,0px) + 18px)}
+.pad:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
 
 /* ---------- Toast ---------- */
 #toast{
@@ -156,23 +173,24 @@ body.calibrating #camHint{font-size:15px;padding:6px}
   <div id="camHint">Mencari pemain…</div>
 </div>
 
+<button class="pad" id="padL" type="button" aria-label="Geser ke kiri" hidden>1</button>
+<button class="pad" id="padR" type="button" aria-label="Geser ke kanan" hidden>2</button>
+
 <div id="toast" role="status"></div>
 
 <div id="overlay">
   <section class="panel" id="p-menu">
     <h1>Tangkap Bentuk</h1>
-    <p class="lead">Dengarkan perintahnya, lalu tangkap bentuk yang benar dengan keranjang.</p>
-    <div class="actions">
-      <button class="btn" id="btnCam" type="button" disabled>Main dengan kamera</button>
-      <button class="btn alt" id="btnKey" type="button" disabled>Main dengan keyboard</button>
+    <div class="actions menu-actions">
+      <button class="btn" id="btnStart" type="button" disabled>Start</button>
+      <button class="btn alt" id="btnExit" type="button">Exit</button>
     </div>
     <p class="status" id="loadStatus">Memuat gambar…</p>
     <ul class="tips">
-      <li>Ada tiga jalur: kiri, tengah, kanan. Keranjang mulai di tengah.</li>
-      <li>Kamera: geser badanmu sekali ke kiri atau ke kanan.</li>
-      <li>Keyboard: A / D atau panah kiri / kanan, sekali tekan pindah satu jalur.</li>
-      <li>Ketuk atau klik jalur yang kamu mau juga bisa.</li>
-      <li>P jeda, C kalibrasi ulang, M suara, V pratinjau kamera, R ulangi perintah.</li>
+      <li>Kamera dipakai untuk membaca gerak badanmu.</li>
+      <li>Saat diminta, keluar dari bingkai kamera selama 5 detik.</li>
+      <li>Lalu masuk ke bingkai dan berdiri di tengah selama 5 detik.</li>
+      <li>Geser badan sekali ke kiri atau kanan untuk pindah jalur.</li>
     </ul>
     <p class="privacy">Video kamera hanya diproses di perangkatmu dan tidak dikirim ke mana pun.</p>
   </section>
@@ -184,10 +202,16 @@ body.calibrating #camHint{font-size:15px;padding:6px}
 
   <section class="panel" id="p-pause" hidden>
     <h2>Jeda</h2>
-    <p class="lead">Tekan P atau tombol di bawah untuk lanjut.</p>
     <div class="actions">
       <button class="btn" id="btnResume" type="button">Lanjut</button>
       <button class="btn alt" id="btnMenu1" type="button">Ke menu</button>
+    </div>
+  </section>
+
+  <section class="panel" id="p-exit" hidden>
+    <h2>Terima kasih sudah bermain</h2>
+    <div class="actions" style="margin-top:14px">
+      <button class="btn" id="btnBack" type="button">Kembali ke menu</button>
     </div>
   </section>
 
@@ -212,10 +236,9 @@ body.calibrating #camHint{font-size:15px;padding:6px}
    ===================================================================== */
 const ASSET_DIR = 'assets';
 const SHAPES = [
-  { key: 'bulat',          label: 'lingkaran'       },
-  { key: 'segitiga',       label: 'segitiga'        },
-  { key: 'kotak',          label: 'kotak'           },
-  { key: 'persegipanjang', label: 'persegi panjang' },
+  { key: 'lengkung',  label: 'lengkung'   },   // lingkaran, donat, bola, dll.
+  { key: 'segitiga',  label: 'segitiga'   },
+  { key: 'segiempat', label: 'segi empat' },   // kotak, persegi panjang, dll.
 ];
 const EXTS = ['png', 'jpg'];     // urutan format yang dicoba untuk tiap nomor gambar
 const MAX_VARIANTS = 30;         // maksimal nomor gambar per folder yang dicari
@@ -250,7 +273,6 @@ let score = 0, lives = START_LIVES, level = 1, correctTotal = 0, correctInTarget
 let target = null, targetClock = 0, spawnTimer = 1, shake = 0, flash = 0, best = 0;
 let muted = false, previewOn = true;
 let lastKey = 0;
-const pointer = { active: false, x: 0 };
 const clouds = Array.from({ length: 5 }, (_, i) => ({ x: Math.random(), y: 0.06 + Math.random() * 0.3, s: rand(0.7, 1.3), v: rand(0.004, 0.012) }));
 
 try { best = parseInt(localStorage.getItem('tangkapBentuk.best') || '0', 10) || 0; } catch (e) {}
@@ -314,11 +336,8 @@ async function loadAssets() {
     st.textContent = 'Gambar belum ditemukan: ' + missing.join(', ') + '. Pastikan folder assets ada di samping index.html.';
     return;
   }
-  st.textContent = missing.length
-    ? `Siap (${total} gambar). Belum ada: ${missing.join(', ')}`
-    : `Siap! ${total} gambar dimuat.`;
-  $('btnCam').disabled = false;
-  $('btnKey').disabled = false;
+  st.textContent = missing.length ? `Belum ada: ${missing.join(', ')}` : '';
+  $('btnStart').disabled = false;
 }
 
 /* ---------------------------------------------------------------------
@@ -437,17 +456,17 @@ function trackCamera(now) {
   camCtx.restore();
 
   const phase = state === 'calibrate' ? calib.phase : null;
-  if (phase === 'warmup' || phase === 'count') { setHint('Kosongkan bingkai kamera'); return; }
 
   const img = camCtx.getImageData(0, 0, CAM.w, CAM.h);
   const d = img.data;
 
-  if (phase === 'capture') {
+  if (phase === 'empty') {          // 5 detik pertama: rekam latar belakang kosong
+    setHint('Kosongkan bingkai kamera');
+    if (calib.t < 1) return;        // 1 detik awal dilewati, menunggu kamera menyesuaikan cahaya
     for (let i = 0, p = 0; i < N; i++, p += 4) {
       camera.acc[i * 3] += d[p]; camera.acc[i * 3 + 1] += d[p + 1]; camera.acc[i * 3 + 2] += d[p + 2];
     }
     camera.accN++;
-    setHint('Mengambil latar…');
     return;
   }
   if (!camera.calibrated) return;
@@ -522,6 +541,7 @@ function setState(s) {
   state = s;
   document.body.classList.toggle('calibrating', s === 'calibrate' && camera.active);
   $('hud').hidden = !(s === 'playing' || s === 'paused' || s === 'calibrate');
+  $('padL').hidden = $('padR').hidden = s !== 'playing';
   refreshPreview();
 }
 
@@ -535,7 +555,7 @@ function resetGame() {
 function beginFlow(full, resume) {
   calib.resume = resume; calib.t = 0;
   const doCalib = full && camera.active;
-  calib.phase = doCalib ? 'warmup' : 'enter';
+  calib.phase = doCalib ? 'empty' : 'enter';
   if (doCalib) { camera.calibrated = false; camera.acc.fill(0); camera.accN = 0; camera.seen = false; }
   setState('calibrate');
   showPanel('calib');
@@ -546,21 +566,18 @@ function updateCalib(dt) {
   calib.t += dt;
   let msg = '', num = '';
   switch (calib.phase) {
-    case 'warmup':
-      msg = 'Menyiapkan kamera…';
-      if (calib.t > 1.2) { calib.phase = 'count'; calib.t = 0; }
+    case 'empty':                   // 5 detik: kosongkan bingkai, kamera merekam latar
+      msg = 'Kosongkan bingkai kamera. Keluar dulu dari area di depan kamera.';
+      num = Math.max(1, Math.ceil(5 - calib.t));
+      if (calib.t >= 5) { finalizeBackground(); calib.phase = 'find'; calib.t = 0; }
       break;
-    case 'count':
-      msg = 'Keluar dari bingkai kamera dulu ya, kosongkan area di depannya.';
-      num = Math.max(1, Math.ceil(3 - calib.t));
-      if (calib.t >= 3) { calib.phase = 'capture'; calib.t = 0; }
-      break;
-    case 'capture':
-      msg = 'Mengambil latar belakang. Jangan masuk dulu.';
-      if (calib.t >= 0.8) { finalizeBackground(); calib.phase = 'enter'; calib.t = 0; }
+    case 'find':                    // 5 detik: kamera mencari objek pemain
+      msg = camera.seen ? 'Pemain terdeteksi. Berdiri di tengah.' : 'Masuk ke bingkai kamera dan berdiri di tengah.';
+      num = Math.max(1, Math.ceil(5 - calib.t));
+      if (calib.t >= 5) { startPlaying(); return; }
       break;
     case 'enter':
-      msg = camera.active ? 'Sekarang masuk ke bingkai dan berdiri di tengah.' : 'Bersiap! Gunakan A / D atau panah.';
+      msg = 'Bersiap!';
       num = Math.max(1, Math.ceil(3 - calib.t));
       if (calib.t >= 3) { startPlaying(); return; }
       break;
@@ -681,9 +698,7 @@ function setLane(l) { basket.lane = clamp(l, 0, LANES - 1); }
 
 function updateBasket(dt) {
   const now = performance.now();
-  if (pointer.active) {
-    setLane(Math.floor((pointer.x - fieldX) / laneW));
-  } else if (camera.active && camera.calibrated && camera.seen && now - lastKey > 700) {
+  if (camera.active && camera.calibrated && camera.seen && now - lastKey > 700) {
     // posisi badan -> jalur, dengan jeda kecil supaya tidak bolak-balik di perbatasan
     const p = camera.px;
     let l = basket.lane;
@@ -873,11 +888,11 @@ function frame(now) {
 addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   switch (e.code) {
-    case 'ArrowLeft': case 'KeyA':
+    case 'Digit1': case 'Numpad1':
       e.preventDefault();
       if (!e.repeat && (state === 'playing' || state === 'calibrate')) { setLane(basket.lane - 1); lastKey = performance.now(); }
       break;
-    case 'ArrowRight': case 'KeyD':
+    case 'Digit2': case 'Numpad2':
       e.preventDefault();
       if (!e.repeat && (state === 'playing' || state === 'calibrate')) { setLane(basket.lane + 1); lastKey = performance.now(); }
       break;
@@ -894,10 +909,22 @@ addEventListener('keydown', e => {
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) pauseGame(); });
 
-canvas.addEventListener('pointerdown', e => { pointer.active = true; pointer.x = e.clientX; });
-canvas.addEventListener('pointermove', e => { if (pointer.active) pointer.x = e.clientX; });
-addEventListener('pointerup', () => { pointer.active = false; });
-addEventListener('pointercancel', () => { pointer.active = false; });
+// tombol sentuh: 1 = satu jalur ke kiri, 2 = satu jalur ke kanan
+function bindPad(id, dir) {
+  const b = $(id);
+  b.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    b.classList.add('down');
+    if (state === 'playing') { setLane(basket.lane + dir); lastKey = performance.now(); }
+  });
+  const up = () => b.classList.remove('down');
+  b.addEventListener('pointerup', up);
+  b.addEventListener('pointerleave', up);
+  b.addEventListener('pointercancel', up);
+  b.addEventListener('contextmenu', e => e.preventDefault());
+}
+bindPad('padL', -1);
+bindPad('padR', 1);
 
 function toggleMute() {
   muted = !muted;
@@ -907,27 +934,31 @@ function toggleMute() {
 $('muteBtn').addEventListener('click', toggleMute);
 $('target').addEventListener('click', () => { if (state === 'playing' && target) say('Tangkap bentuk ' + target.label); });
 
-$('btnKey').addEventListener('click', () => {
-  initAudio(); stopCamera(); resetGame(); beginFlow(false, false);
-});
-$('btnCam').addEventListener('click', async () => {
+$('btnStart').addEventListener('click', async () => {
   initAudio();
   const st = $('loadStatus');
-  $('btnCam').disabled = $('btnKey').disabled = true;
+  $('btnStart').disabled = true;
   st.textContent = 'Meminta izin kamera…';
   try {
     await startCamera();
+    st.textContent = '';
     resetGame(); beginFlow(true, false);
   } catch (err) {
     stopCamera();
     const msg = cameraErrorText(err);
-    st.textContent = msg + ' Lanjut dengan keyboard.';
+    st.textContent = msg + ' Main dengan tombol 1 dan 2.';
     resetGame(); beginFlow(false, false);
     toast(msg);
   } finally {
-    $('btnCam').disabled = $('btnKey').disabled = false;
+    $('btnStart').disabled = false;
   }
 });
+$('btnExit').addEventListener('click', () => {
+  stopSpeech(); stopCamera();
+  try { window.close(); } catch (e) {}
+  setTimeout(() => { setState('menu'); showPanel('exit'); }, 150);   // jika tab tidak bisa ditutup
+});
+$('btnBack').addEventListener('click', () => { setState('menu'); showPanel('menu'); });
 $('btnResume').addEventListener('click', resumeGame);
 $('btnMenu1').addEventListener('click', goMenu);
 $('btnMenu2').addEventListener('click', goMenu);
